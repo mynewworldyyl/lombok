@@ -698,7 +698,7 @@ public class JavacTreeMaker {
 		return invoke(Assert, cond, detail);
 	}
 	
-	//javac versions: 6-8
+	//javac versions: 6-8 方法调用
 	private static final MethodId<JCMethodInvocation> Apply = MethodId("Apply");
 	public JCMethodInvocation Apply(List<JCExpression> typeargs, JCExpression fn, List<JCExpression> args) {
 		return invoke(Apply, typeargs, fn, args);

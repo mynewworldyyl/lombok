@@ -277,6 +277,9 @@ public class ConfigurationKeys {
 	 */
 	public static final ConfigurationKey<CallSuperType> TO_STRING_CALL_SUPER = new ConfigurationKey<CallSuperType>("lombok.toString.callSuper", "When generating toString for classes that extend something (other than Object), either automatically take into account superclass implementation (call), or don't (skip), or warn and don't (warn). (default = skip).") {};
 	
+	public static final ConfigurationKey<CallSuperType> SERIAL_ENCODE_CALL_SUPER = new ConfigurationKey<CallSuperType>("lombok.encode.callSuper", "encode") {};
+	
+	public static final ConfigurationKey<CallSuperType> SERIAL_DECODE_CALL_SUPER = new ConfigurationKey<CallSuperType>("lombok.decode.callSuper", "decode") {};
 	/**
 	 * lombok configuration: {@code lombok.toString.flagUsage} = {@code WARNING} | {@code ERROR}.
 	 * 

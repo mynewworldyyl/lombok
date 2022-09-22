@@ -1073,19 +1073,23 @@ public class JavacHandlerUtil {
 		return createMethodAccessor(maker, method, null);
 	}
 	
+	
 	static JCExpression createMethodAccessor(JavacTreeMaker maker, JavacNode method, JCExpression receiver) {
 		JCMethodDecl methodDecl = (JCMethodDecl) method.get();
 		
 		if (receiver == null && (methodDecl.mods.flags & Flags.STATIC) == 0) {
+			//非静态方法调用（成员方法）
 			receiver = maker.Ident(method.toName("this"));
 		} else if (receiver == null) {
+			//静态方法调用
 			JavacNode containerNode = method.up();
 			if (containerNode != null && containerNode.get() instanceof JCClassDecl) {
 				JCClassDecl container = (JCClassDecl) method.up().get();
-				receiver = maker.Ident(container.name);
+				receiver = maker.Ident(container.name);//类名.方法名
 			}
 		}
 		
+		//无参数方法调用
 		JCMethodInvocation call = maker.Apply(List.<JCExpression>nil(),
 			receiver == null ? maker.Ident(methodDecl.name) : maker.Select(receiver, methodDecl.name), List.<JCExpression>nil());
 		return call;

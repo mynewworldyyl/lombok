@@ -1,0 +1,255 @@
+/*
+ * Copyright (C) 2009-2021 The Project Lombok Authors.
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package lombok.javac.handlers;
+
+import static lombok.core.handlers.HandlerUtil.handleFlagUsage;
+import static lombok.javac.Javac.CTC_PLUS;
+import static lombok.javac.handlers.JavacHandlerUtil.*;
+
+import java.util.Collection;
+
+import com.sun.tools.javac.code.Flags;
+import com.sun.tools.javac.tree.JCTree.JCAnnotation;
+import com.sun.tools.javac.tree.JCTree.JCArrayTypeTree;
+import com.sun.tools.javac.tree.JCTree.JCBlock;
+import com.sun.tools.javac.tree.JCTree.JCExpression;
+import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
+import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
+import com.sun.tools.javac.tree.JCTree.JCModifiers;
+import com.sun.tools.javac.tree.JCTree.JCPrimitiveTypeTree;
+import com.sun.tools.javac.tree.JCTree.JCStatement;
+import com.sun.tools.javac.tree.JCTree.JCTypeParameter;
+import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
+import com.sun.tools.javac.util.List;
+
+import lombok.ConfigurationKeys;
+import lombok.Serial;
+import lombok.ToString;
+import lombok.core.AST.Kind;
+import lombok.core.AnnotationValues;
+import lombok.core.configuration.CallSuperType;
+import lombok.core.configuration.CheckerFrameworkVersion;
+import lombok.core.handlers.HandlerUtil.FieldAccess;
+import lombok.core.handlers.InclusionExclusionUtils;
+import lombok.core.handlers.InclusionExclusionUtils.Included;
+import lombok.javac.JavacAnnotationHandler;
+import lombok.javac.JavacNode;
+import lombok.javac.JavacTreeMaker;
+import lombok.spi.Provides;
+
+/**
+ * Handles the {@code ToString} annotation for javac.
+ */
+@Provides
+public class HandleSerial extends JavacAnnotationHandler<Serial> {
+	@Override public void handle(AnnotationValues<Serial> annotation, JCAnnotation ast, JavacNode annotationNode) {
+		handleFlagUsage(annotationNode, ConfigurationKeys.TO_STRING_FLAG_USAGE, "@ToString");
+		
+		deleteAnnotationIfNeccessary(annotationNode, ToString.class);
+		
+		Serial ann = annotation.getInstance();
+		boolean onlyExplicitlyIncluded = annotationNode.getAst().getBooleanAnnotationValue(annotation, "onlyExplicitlyIncluded", ConfigurationKeys.TO_STRING_ONLY_EXPLICITLY_INCLUDED);
+		java.util.List<Included<JavacNode, ToString.Include>> members = InclusionExclusionUtils.handleToStringMarking(annotationNode.up(), onlyExplicitlyIncluded, annotation, annotationNode);
+		if (members == null) return;
+		
+		Boolean callSuper = ann.callSuper();
+		
+		if (!annotation.isExplicit("callSuper")) callSuper = null;
+		
+		Boolean doNotUseGettersConfiguration = annotationNode.getAst().readConfiguration(ConfigurationKeys.TO_STRING_DO_NOT_USE_GETTERS);
+		boolean doNotUseGetters = annotation.isExplicit("doNotUseGetters") || doNotUseGettersConfiguration == null ? ann.doNotUseGetters() : doNotUseGettersConfiguration;
+		
+		FieldAccess fieldAccess = doNotUseGetters ? FieldAccess.PREFER_FIELD : FieldAccess.GETTER;
+		
+		boolean includeFieldNames = annotationNode.getAst().getBooleanAnnotationValue(annotation, "includeFieldNames", ConfigurationKeys.TO_STRING_INCLUDE_FIELD_NAMES);
+		
+		generateToString(annotationNode.up(), annotationNode, members, includeFieldNames, callSuper, true, fieldAccess);
+	}
+	
+	public void generateToStringForType(JavacNode typeNode, JavacNode errorNode) {
+		if (hasAnnotation(ToString.class, typeNode)) {
+			//The annotation will make it happen, so we can skip it.
+			return;
+		}
+		
+		AnnotationValues<ToString> anno = AnnotationValues.of(ToString.class);
+		boolean includeFieldNames = typeNode.getAst().getBooleanAnnotationValue(anno, "includeFieldNames", ConfigurationKeys.TO_STRING_INCLUDE_FIELD_NAMES);
+		boolean onlyExplicitlyIncluded = typeNode.getAst().getBooleanAnnotationValue(anno, "onlyExplicitlyIncluded", ConfigurationKeys.TO_STRING_ONLY_EXPLICITLY_INCLUDED);
+		
+		Boolean doNotUseGettersConfiguration = typeNode.getAst().readConfiguration(ConfigurationKeys.TO_STRING_DO_NOT_USE_GETTERS);
+		FieldAccess access = doNotUseGettersConfiguration == null || !doNotUseGettersConfiguration ? FieldAccess.GETTER : FieldAccess.PREFER_FIELD;
+		
+		java.util.List<Included<JavacNode, ToString.Include>> members = InclusionExclusionUtils.handleToStringMarking(typeNode, onlyExplicitlyIncluded, null, null);
+		generateToString(typeNode, errorNode, members, includeFieldNames, null, false, access);
+	}
+	
+	public void createEncodeMethod(JavacNode typeNode, JavacNode source, java.util.List<Included<JavacNode, ToString.Include>> members,
+		boolean includeFieldNames, Boolean callSuper, boolean whineIfExists, FieldAccess fieldAccess) {
+		
+		if (!isClassOrEnum(typeNode)) {
+			source.addError("@Serial is only supported on a class or enum.");
+			return;
+		}
+		
+		switch (methodExists("encode", typeNode, 1)) {
+		case NOT_EXISTS:
+			if (callSuper == null) {
+				if (isDirectDescendantOfObject(typeNode)) {
+					callSuper = false;
+				} else {
+					CallSuperType cst = typeNode.getAst().readConfiguration(ConfigurationKeys.SERIAL_ENCODE_CALL_SUPER);
+					if (cst == null) cst = CallSuperType.SKIP;
+					switch (cst) {
+					default:
+					case SKIP:
+						callSuper = false;
+						break;
+					case WARN:
+						source.addWarning("Generating toString implementation but without a call to superclass, even though this class does not extend java.lang.Object. If this is intentional, add '@ToString(callSuper=false)' to your type.");
+						callSuper = false;
+						break;
+					case CALL:
+						callSuper = true;
+						break;
+					}
+				}
+			}
+			JCMethodDecl method = createEncodeMethod(typeNode, members, includeFieldNames, callSuper, fieldAccess, source);
+			injectMethod(typeNode, method);
+			break;
+		case EXISTS_BY_LOMBOK:
+			break;
+		default:
+		case EXISTS_BY_USER:
+			if (whineIfExists) {
+				source.addWarning("Not generating toString(): A method with that name already exists");
+			}
+			break;
+		}
+	}
+	
+	static JCMethodDecl createEncodeMethod(JavacNode typeNode, Collection<Included<JavacNode, ToString.Include>> members,
+		boolean includeNames, boolean callSuper, FieldAccess fieldAccess, JavacNode source) {
+		
+		JavacTreeMaker maker = typeNode.getTreeMaker();
+		
+		//Override注解
+		JCAnnotation overrideAnnotation = maker.Annotation(genJavaLangTypeRef(typeNode, "Override"), List.<JCExpression>nil());
+		List<JCAnnotation> annsOnMethod = List.of(overrideAnnotation);
+		if (getCheckerFrameworkVersion(typeNode).generateSideEffectFree()) annsOnMethod = annsOnMethod.prepend(maker.Annotation(genTypeRef(typeNode, CheckerFrameworkVersion.NAME__SIDE_EFFECT_FREE), List.<JCExpression>nil()));
+		JCModifiers mods = maker.Modifiers(Flags.PUBLIC, annsOnMethod);
+		
+		JCExpression returnType = genJavaLangTypeRef(typeNode, "void");
+		
+		boolean first = true;
+		
+		String typeName = getTypeName(typeNode);
+		
+		String infix = ", ";
+		String suffix = ")";
+		String prefix;
+		if (callSuper) {
+			prefix = "(super=";
+		} else if (members.isEmpty()) {
+			prefix =  "()";
+		} else if (includeNames) {
+			Included<JavacNode, ToString.Include> firstMember = members.iterator().next();
+			String name = firstMember.getInc() == null ? "" : firstMember.getInc().name();
+			if (name.isEmpty()) name = firstMember.getNode().getName();
+			prefix = "(" + name + "=";
+		} else {
+			prefix = "(";
+		}
+		
+		JCExpression current = maker.Literal(typeName + prefix);
+		
+		if (callSuper) {
+			JCMethodInvocation callToSuper = maker.Apply(List.<JCExpression>nil(),
+				maker.Select(maker.Ident(typeNode.toName("super")), typeNode.toName("encode")),
+				List.<JCExpression>nil());
+			current = maker.Binary(CTC_PLUS, current, callToSuper);
+			first = false;
+		}
+		
+		for (Included<JavacNode, ToString.Include> member : members) {
+			JCExpression expr;
+			
+			JCExpression memberAccessor;
+			JavacNode memberNode = member.getNode();
+			if (memberNode.getKind() == Kind.METHOD) {
+				memberAccessor = createMethodAccessor(maker, memberNode);
+			} else {
+				memberAccessor = createFieldAccessor(maker, memberNode, fieldAccess);
+			}
+			
+			JCExpression memberType = getFieldType(memberNode, fieldAccess);
+			
+			// The distinction between primitive and object will be useful if we ever add a 'hideNulls' option.
+			@SuppressWarnings("unused")
+			boolean fieldIsPrimitive = memberType instanceof JCPrimitiveTypeTree;
+			boolean fieldIsPrimitiveArray = memberType instanceof JCArrayTypeTree && ((JCArrayTypeTree) memberType).elemtype instanceof JCPrimitiveTypeTree;
+			boolean fieldIsObjectArray = !fieldIsPrimitiveArray && memberType instanceof JCArrayTypeTree;
+			
+			if (fieldIsPrimitiveArray || fieldIsObjectArray) {
+				JCExpression tsMethod = chainDots(typeNode, "java", "util", "Arrays", fieldIsObjectArray ? "deepToString" : "toString");
+				expr = maker.Apply(List.<JCExpression>nil(), tsMethod, List.<JCExpression>of(memberAccessor));
+			} else expr = memberAccessor;
+			
+			if (first) {
+				current = maker.Binary(CTC_PLUS, current, expr);
+				first = false;
+				continue;
+			}
+			
+			if (includeNames) {
+				String n = member.getInc() == null ? "" : member.getInc().name();
+				if (n.isEmpty()) n = memberNode.getName();
+				current = maker.Binary(CTC_PLUS, current, maker.Literal(infix + n + "="));
+			} else {
+				current = maker.Binary(CTC_PLUS, current, maker.Literal(infix));
+			}
+			
+			current = maker.Binary(CTC_PLUS, current, expr);
+		}
+		
+		if (!first) current = maker.Binary(CTC_PLUS, current, maker.Literal(suffix));
+		
+		JCStatement returnStatement = maker.Return(current);
+		
+		JCBlock body = maker.Block(0, List.of(returnStatement));
+		
+		JCMethodDecl methodDef = maker.MethodDef(mods, typeNode.toName("toString"), returnType,
+			List.<JCTypeParameter>nil(), List.<JCVariableDecl>nil(), List.<JCExpression>nil(), body, null);
+		createRelevantNonNullAnnotation(typeNode, methodDef);
+		return recursiveSetGeneratedBy(methodDef, source);
+	}
+	
+	public static String getTypeName(JavacNode typeNode) {
+		String typeName = typeNode.getName();
+		JavacNode upType = typeNode.up();
+		while (upType.getKind() == Kind.TYPE && !upType.getName().isEmpty()) {
+			typeName = upType.getName() + "." + typeName;
+			upType = upType.up();
+		}
+		return typeName;
+	}
+}
