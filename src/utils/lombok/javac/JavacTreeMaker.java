@@ -508,6 +508,18 @@ public class JavacTreeMaker {
 	
 	//javac versions: 6-8
 	private static final MethodId<JCMethodDecl> MethodDef = MethodId("MethodDef", JCMethodDecl.class, JCModifiers.class, Name.class, JCExpression.class, List.class, List.class, List.class, JCBlock.class, JCExpression.class);
+	/**
+	 * 
+	 * @param mods 方法修饰符
+	 * @param name 方法名称
+	 * @param resType 返回类型
+	 * @param typarams 泛型参数
+	 * @param params 方法参数
+	 * @param thrown 方法抛出异常
+	 * @param body 方法体
+	 * @param defaultValue
+	 * @return
+	 */
 	public JCMethodDecl MethodDef(JCModifiers mods, Name name, JCExpression resType, List<JCTypeParameter> typarams, List<JCVariableDecl> params, List<JCExpression> thrown, JCBlock body, JCExpression defaultValue) {
 		return invoke(MethodDef, mods, name, resType, typarams, params, thrown, body, defaultValue);
 	}
@@ -524,6 +536,14 @@ public class JavacTreeMaker {
 	
 	//javac versions: 6-8
 	private static final MethodId<JCVariableDecl> VarDef = MethodId("VarDef");
+	/**
+	 * 
+	 * @param mods
+	 * @param name 变量名称
+	 * @param vartype 变量类型
+	 * @param init 初始值
+	 * @return
+	 */
 	public JCVariableDecl VarDef(JCModifiers mods, Name name, JCExpression vartype, JCExpression init) {
 		JCVariableDecl varDef = invoke(VarDef, mods, name, vartype, init);
 		// We use 'position of the type is -1' as indicator in delombok that the original node was written using JDK10's 'var' feature, because javac desugars 'var' to the real type and doesn't leave any markers other than the
@@ -706,6 +726,15 @@ public class JavacTreeMaker {
 	
 	//javac versions: 6-8
 	private static final MethodId<JCNewClass> NewClass = MethodId("NewClass");
+	/**
+	 * 
+	 * @param encl
+	 * @param typeargs 泛型参数列表
+	 * @param clazz 要实例化的类
+	 * @param args 构造方法参数
+	 * @param def
+	 * @return
+	 */
 	public JCNewClass NewClass(JCExpression encl, List<JCExpression> typeargs, JCExpression clazz, List<JCExpression> args, JCClassDecl def) {
 		return invoke(NewClass, encl, typeargs, clazz, args, def);
 	}

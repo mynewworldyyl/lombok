@@ -432,7 +432,9 @@ public class Javac {
 		} catch (IllegalAccessException ignore) {}
 		
 		if (Javac.getJavaCompilerVersion() < 8) {
-			return new JCNoType(((Integer) tag.value).intValue());
+			//return new JCNoType(((Integer) tag.value).intValue());
+			//不支持小于1.8的JDK
+			return null;
 		} else {
 			try {
 				if (CTC_VOID.equals(tag)) {
@@ -452,7 +454,8 @@ public class Javac {
 		}
 	}
 	
-	private static class JCNoType extends Type implements NoType {
+	//不再支持小于1.8的Java
+	/*private static class JCNoType extends Type implements NoType {
 		public JCNoType(int tag) {
 			super(tag, null);
 		}
@@ -468,7 +471,7 @@ public class Javac {
 		public <R, P> R accept(TypeVisitor<R, P> v, P p) {
 			return v.visitNoType(this, p);
 		}
-	}
+	}*/
 	
 	private static final Field JCCOMPILATIONUNIT_ENDPOSITIONS, JCCOMPILATIONUNIT_DOCCOMMENTS;
 	static {

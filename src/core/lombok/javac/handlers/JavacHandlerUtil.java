@@ -1073,7 +1073,7 @@ public class JavacHandlerUtil {
 		return createMethodAccessor(maker, method, null);
 	}
 	
-	
+	//调用无参数方法
 	static JCExpression createMethodAccessor(JavacTreeMaker maker, JavacNode method, JCExpression receiver) {
 		JCMethodDecl methodDecl = (JCMethodDecl) method.get();
 		
@@ -1089,7 +1089,7 @@ public class JavacHandlerUtil {
 			}
 		}
 		
-		//无参数方法调用
+		//无参数方法调用，是一个表达式，可以参与表达式相关运算
 		JCMethodInvocation call = maker.Apply(List.<JCExpression>nil(),
 			receiver == null ? maker.Ident(methodDecl.name) : maker.Select(receiver, methodDecl.name), List.<JCExpression>nil());
 		return call;

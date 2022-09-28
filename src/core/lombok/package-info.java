@@ -23,12 +23,6 @@
 /**
  * This package contains all the annotations and support classes you need as a user of lombok.
  * All other packages are only relevant to those who are extending lombok for their own uses, except:
- * 
- * <ul>
- * <li>{@code lombok.extern.*} – These packages contains lombok annotations that solve boilerplate issues for libraries not part of the JRE itself.
- * <li>{@code lombok.experimental} – This package contains lombok features that are new or likely to change before committing to long-term support.
- * </ul>
- * 
  * @see <a href="https://projectlombok.org/features/all">Lombok features</a>
  */
 package lombok;

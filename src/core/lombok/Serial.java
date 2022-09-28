@@ -24,8 +24,8 @@ import java.lang.annotation.Target;
 
 /**
  * 
+ *
  * @author Yulei Ye
- * @date 2018年10月4日-上午11:56:24
  */
 @Target(TYPE)
 @Retention(RUNTIME)

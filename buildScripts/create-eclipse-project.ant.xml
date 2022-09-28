@@ -46,7 +46,7 @@ This buildfile is part of projectlombok.org. It creates the infrastructure neede
 			<srcdir dir="test/configuration/src" />
 			<srcdir dir="test/stubs" />
 			<conf name="build" sources="sources" />
-			<conf name="javac6" sources="sources" />
+			<conf name="javac8" sources="sources" />
 			<conf name="eclipse-oxygen" sources="sources" />
 			<conf name="test" sources="sources" />
 			<conf name="buildtools" sources="sources" />

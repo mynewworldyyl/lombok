@@ -18,3 +18,6 @@ You can review our security policy via [SECURITY.md]
 [SECURITY.md]: https://github.com/projectlombok/lombok/blob/master/SECURITY.md
 [projectlombok.org]: https://projectlombok.org/
 [tidelift subscription]: https://tidelift.com/subscription/pkg/maven-org-projectlombok-lombok?utm_source=maven-org-projectlombok-lombok&utm_medium=referral&campaign=website
+
+# install the lombok jar to local maven resp
+mvn install:install-file -Dfile=D:\opensource\github\lombok\dist\lombok-1.18.25.jar -DgroupId=org.projectlombok -DartifactId=lombok -Dversion=1.18.25 -Dpackaging=jar

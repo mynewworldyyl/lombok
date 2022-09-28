@@ -35,7 +35,7 @@ This buildfile is part of projectlombok.org. It creates the infrastructure neede
 		<input>Press return to continue</input>
 		<ivy:intellijgen>
 			<conf name="build" sources="sources" />
-			<conf name="javac6" sources="sources" />
+			<conf name="javac8" sources="sources" />
 			<conf name="test" sources="sources" />
 			<conf name="buildtools" sources="sources" />
 			<module name="lombok" depends="build, test">

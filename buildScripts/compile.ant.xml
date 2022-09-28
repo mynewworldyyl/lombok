@@ -28,8 +28,8 @@ This buildfile is part of projectlombok.org. It takes care of compiling and buil
 	
 	<!-- compiles just 'version.java' and runs the produced class file, setting up the various version properties -->
 	<target name="version" depends="ipp.setup, deps.jdk-runtime, -setup.build" description="Shows the version number" unless="lombok.version">
-		<ivy:compile destdir="build/lombok-version" source="1.5" target="1.5" ecj="true" nowarn="true">
-			<bootclasspath path="${jdk6-rt.loc}" />
+		<ivy:compile destdir="build/lombok-version" source="1.8" target="1.8" ecj="true" nowarn="true">
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="src/core" />
 			<include name="lombok/core/Version.java" />
 		</ivy:compile>
@@ -75,8 +75,8 @@ This buildfile is part of projectlombok.org. It takes care of compiling and buil
 	</target>
 	
 	<target name="create.mavenEcjBootstrapAgent" depends="-setup.build" description="Compiles the Maven ECJ bootstrap agent">
-		<ivy:compile destdir="build/mavenEcjBootstrapAgent" source="1.6" target="1.6" ecj="true">
-			<bootclasspath path="${jdk6-rt.loc}" />
+		<ivy:compile destdir="build/mavenEcjBootstrapAgent" source="1.8" target="1.8" ecj="true">
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="src/mavenEcjBootstrapAgent" />
 		</ivy:compile>
 		<mkdir dir="build/lombok-main/lombok/launch" />
@@ -107,12 +107,12 @@ This buildfile is part of projectlombok.org. It takes care of compiling and buil
 			Instead of depending on conflicting versions, we write stub files; just enough for compilation to succeed.
 			
 			However, the stubs themselves also have a ton of dependencies; to avoid _that_, we have stubs for stubs, too! -->
-		<ivy:compile destdir="build/stubsstubs" source="1.5" target="1.5" ecj="true">
-			<bootclasspath path="${jdk6-rt.loc}" />
+		<ivy:compile destdir="build/stubsstubs" source="1.8" target="1.8" ecj="true">
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="src/stubsstubs" />
 		</ivy:compile>
-		<ivy:compile destdir="build/stubs" source="1.5" target="1.5" ecj="true">
-			<bootclasspath path="${jdk6-rt.loc}" />
+		<ivy:compile destdir="build/stubs" source="1.8" target="1.8" ecj="true">
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="src/stubs" />
 			<src path="src/javac-only-stubs" />
 			<classpath location="build/stubsstubs" />
@@ -141,42 +141,42 @@ This buildfile is part of projectlombok.org. It takes care of compiling and buil
 			</filterchain>
 		</copy>
 		
-		<ivy:compile destdir="build/lombok-transplants" source="1.4" target="1.4" ecj="true">
+		<ivy:compile destdir="build/lombok-transplants" source="1.8" target="1.8" ecj="true">
 			<bootclasspath location="build/stubs" />
-			<bootclasspath path="${jdk6-rt.loc}" />
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="build/transformedSources" />
 		</ivy:compile>
 		
-		<ivy:compile destdir="build/lombok-transplants/Class50" source="1.4" target="1.6" ecj="true">
+		<ivy:compile destdir="build/lombok-transplants/Class50" source="1.8" target="1.8" ecj="true">
 			<bootclasspath location="build/stubs" />
-			<bootclasspath path="${jdk6-rt.loc}" />
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="build/transformedSources" />
 		</ivy:compile>
 		
-		<ivy:compile destdir="build/lombok-utils" source="1.5" target="1.5" ecj="true">
+		<ivy:compile destdir="build/lombok-utils" source="1.5" target="1.8" ecj="true">
 			<bootclasspath location="build/stubs" />
-			<bootclasspath path="${jdk6-rt.loc}" />
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="src/utils" />
 			<exclude name="lombok/javac/**" />
 			<classpath location="build/lombok-utils" />
-			<classpath refid="cp.javac6" />
+			<classpath refid="cp.javac8" />
 			<classpath refid="cp.ecj8" />
 		</ivy:compile>
-		<ivy:compile destdir="build/lombok-utils6" source="1.6" target="1.6" ecj="true">
+		<ivy:compile destdir="build/lombok-utils6" source="1.8" target="1.8" ecj="true">
 			<bootclasspath location="build/stubs" />
-			<bootclasspath path="${jdk6-rt.loc}" />
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="src/utils" />
 			<include name="lombok/javac/**" />
-			<classpath refid="cp.javac6" />
+			<classpath refid="cp.javac8" />
 			<classpath path="build/lombok-utils:build/lombok-utils6" />
 		</ivy:compile>
 		
 		<!--
 			compile lombok proper. We target java 1.6 to be as compatible with older releases as we can, using a JDK6 boot rt to ensure we don't
 			use API that didn't exist in those versions yet. -->
-		<ivy:compile destdir="build/lombok-main" source="1.6" target="1.6" ecj="true" nowarn="true">
+		<ivy:compile destdir="build/lombok-main" source="1.8" target="1.8" ecj="true" nowarn="true">
 			<bootclasspath location="build/stubs" />
-			<bootclasspath path="${jdk6-rt.loc}" />
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="src/launch" />
 			<src path="src/core" />
 			<src path="src/installer" />
@@ -185,15 +185,15 @@ This buildfile is part of projectlombok.org. It takes care of compiling and buil
 			<exclude name="**/*Transplants.java" />
 			<classpath refid="cp.build" />
 			<classpath refid="cp.eclipse-oxygen" />
-			<classpath refid="cp.javac6" />
+			<classpath refid="cp.javac8" />
 			<classpath path="build/lombok-utils:build/lombok-utils6:build/lombok-main:dist/spiProcessor.jar" />
 			<annotationProcessor jar="dist/spiProcessor.jar" processor="lombok.spi.SpiProcessor" />
 		</ivy:compile>
 		
 		<!-- This is really part of the eclipse agent, but references lombok, so that had to be compiled first -->
-		<ivy:compile destdir="build/lombok-main/Class50" source="1.5" target="1.6" ecj="true">
+		<ivy:compile destdir="build/lombok-main/Class50" source="1.8" target="1.8" ecj="true">
 			<bootclasspath location="build/stubs" />
-			<bootclasspath path="${jdk6-rt.loc}" />
+			<bootclasspath path="${jdk8-rt.loc}" />
 			<src path="src/eclipseAgent" />
 			<include name="lombok/launch/PatchFixesHider.java" />
 			<classpath refid="cp.build" />
