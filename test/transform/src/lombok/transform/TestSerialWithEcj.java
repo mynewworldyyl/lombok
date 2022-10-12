@@ -33,7 +33,7 @@ import lombok.DirectoryRunner;
 // When running inside eclipse's junit tester, you don't actually need to run 'ant dist' after updating code, though.
 
 @RunWith(DirectoryRunner.class)
-public class TestWithEcj extends DirectoryRunner.TestParams {
+public class TestSerialWithEcj extends DirectoryRunner.TestParams {
 	@Override
 	public DirectoryRunner.Compiler getCompiler() {
 		return DirectoryRunner.Compiler.ECJ;
@@ -46,7 +46,7 @@ public class TestWithEcj extends DirectoryRunner.TestParams {
 	
 	@Override
 	public File getBeforeDirectory() {
-		return new File("test/transform/resource/before");
+		return new File("test/transform/resource/serial");
 	}
 	
 	@Override

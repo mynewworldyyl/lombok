@@ -183,7 +183,7 @@ public class HandleGetter extends EclipseAnnotationHandler<Getter> {
 				errorNode.addError("'lazy' is not supported on transient fields.");
 				return;
 			}
-			if (field.initialization == null) {
+			if(field.initialization == null) {
 				errorNode.addError("'lazy' requires field initialization.");
 				return;
 			}

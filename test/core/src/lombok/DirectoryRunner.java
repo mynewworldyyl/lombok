@@ -125,7 +125,8 @@ public class DirectoryRunner extends Runner {
 	}
 	
 	private void addTests(Class<?> testClass) throws Exception {
-		for (File file : params.getBeforeDirectory().listFiles(JAVA_FILE_FILTER)) {
+		File[] fs = params.getBeforeDirectory().listFiles(JAVA_FILE_FILTER);
+		for (File file : fs) {
 			if (!params.accept(file)) continue;
 			Description testDescription = Description.createTestDescription(testClass, this.params.testNamePrefix() + file.getName());
 			description.addChild(testDescription);

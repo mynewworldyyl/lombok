@@ -29,9 +29,11 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
 
+import com.sun.source.tree.ParameterizedTypeTree;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
+import com.sun.tools.javac.tree.JCTree.JCArrayTypeTree;
 import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCClassDecl;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
@@ -140,11 +142,14 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 		
 		JCExpression paramType = chainDots(typeNode, "java", "io", "DataInput");
 		JCExpression bufferType = memberTypeExpression(typeNode, "cn.jmicro.api.codec.JDataInput");
-		JCExpression typeCoderType = memberTypeExpression(typeNode, "cn.jmicro.api.codec.typecoder.TypeCoder");
+		JCExpression typeCoderType = memberTypeExpression(typeNode, "cn.jmicro.api.codec.typecoder.ITypeCoder");
 		JCExpression serializeObjectType = memberTypeExpression(typeNode, "cn.jmicro.api.codec.ISerializeObject");
 		
 		//cn.jmicro.api.codec.JDataInput in =
 		//(cn.jmicro.api.codec.JDataInput)buf;\n
+		//JCVariableDecl typeCoderVar = maker.VarDef(maker.Modifiers(0), typeNode.toName("__coder"), typeCoderType, null);
+		//sts = sts.append(typeCoderVar);
+		
 		Name bufName = typeNode.toName("buf");
 		JCIdent bufIntent = maker.Ident(bufName);
 		
@@ -157,18 +162,13 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 		JCVariableDecl inVar = maker.VarDef(maker.Modifiers(0), typeNode.toName("in"), bufferType, jdEXp);
 		sts = sts.append(inVar);
 		
-		JCExpression getInsExp = maker.Apply(List.<JCExpression>nil(), memberTypeExpression(typeNode, "cn.jmicro.api.codec.TypeCoderFactory.getIns"), List.<JCExpression>nil());
-		
-		JCExpression getCoderExp = maker.Apply(List.<JCExpression>nil(), maker.Select(getInsExp, typeNode.toName("getDefaultCoder")), List.<JCExpression>nil());
-		
-		JCVariableDecl typeCoderVar = maker.VarDef(maker.Modifiers(0), typeNode.toName("__coder"), typeCoderType, getCoderExp);
-		sts = sts.append(typeCoderVar);
-		
 		if(!isDirectDescendantOfObject(typeNode)) {
-			//super.decode(buf); 
+			//super.decode(buf);
 			JCTree extending = Javac.getExtendsClause((JCClassDecl) typeNode.get());
-			if (extending != null) {
-				JCStatement callToSuper = maker.Exec(maker.Apply(List.<JCExpression>of(paramType), 
+			if (extending instanceof JCIdent && 
+				((JCIdent)extending).sym.getAnnotation(Serial.class) != null) {
+
+				JCStatement callToSuper = maker.Exec(maker.Apply(List.<JCExpression>nil(), 
 					maker.Select(maker.Ident(typeNode.toName("super")), typeNode.toName(methodName)), 
 					List.<JCExpression>of(bufIntent)));
 				sts = sts.append(callToSuper);
@@ -177,14 +177,14 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 		
 		for (JavacNode f : members) {
 			JCVariableDecl fvarDecl = (JCVariableDecl) f.get();
-			JCExpression ftype = (JCExpression) (fvarDecl.getType());
+			
 			JCExpression val = maker.Select(maker.Ident(typeNode.toName("this")), typeNode.toName(f.getName()));
 			
 			JCStatement st = null;
 			String readMethodName = null;
 			
 			int i = 0;
-			String tname = ftype.type.toString();
+			String tname = fvarDecl.getType().type.toString();
 			
 			if (f.isPrimitive()) {
 				switch (((JCPrimitiveTypeTree) fvarDecl.getType()).getPrimitiveTypeKind()) {
@@ -276,34 +276,59 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 				JCExpression isNullExp = maker.Binary(CTC_EQUAL, readByteExp, nullPrefix);
 				
 				//设置空值"+varName+"=null;
-				JCExpressionStatement setNullVal = maker.Exec(maker.Assign(val, null));
+				JCExpressionStatement setNullVal = maker.Exec(maker.Assign(val, maker.Literal(CTC_BOT, null)));
 				
 				//非空值
 				List<JCStatement> elseStatements = List.<JCStatement>nil();
 				
-				if (f.hasAnnotation(Serial.class)) {
+				JCExpression jcftype = (JCExpression)fvarDecl.getType();
+				if (jcftype instanceof JCIdent && 
+					((JCIdent)jcftype).sym.getAnnotation(Serial.class) != null) {
 					//sb.append(varName).append(" = new ").append(f.getType().getName()).append("();\n");
-					JCExpression valType =JavacHandlerUtil.cloneType(maker,ftype,typeNode);
+					JCExpression valType =JavacHandlerUtil.cloneType(maker,jcftype,typeNode);
 					JCNewClass newVal = maker.NewClass(null, List.<JCExpression>nil(), valType, List.<JCExpression>nil(), null);
 					elseStatements = elseStatements.append(maker.Exec(maker.Assign(val, newVal)));
 					
 					//sb.append(" ((cn.jmicro.api.codec.ISerializeObject)"+varName+").decode(__buffer);\n }");
-					JCTypeCast tc = maker.TypeCast(val,serializeObjectType);
+					JCTypeCast tc = maker.TypeCast(serializeObjectType,val);
 					
 					// in.decode();\n
-					st = maker.Exec(maker.Apply(List.<JCExpression>of(paramType), maker.Select(tc, decodeName), List.<JCExpression>of(bufIntent)));
+					st = maker.Exec(maker.Apply(List.<JCExpression>nil(/*paramType*/), maker.Select(tc, decodeName), List.<JCExpression>of(bufIntent)));
 					elseStatements = elseStatements.append(st);
 					
 				} else {
 					
-					JCExpression psTypeExp = memberTypeExpression(typeNode, tname + ".class");
+					//JCExpression psTypeExp = memberTypeExpression(typeNode, tname + ".class");
+					//JCExpression gsTypeExp = maker.Literal(CTC_BOT, null);
+					//JCExpression classType = chainDots(typeNode, "java", "lang", "Class");
+					JCExpression psTypeExp = null;
 					JCExpression gsTypeExp = maker.Literal(CTC_BOT, null);
-					JCExpression classType = chainDots(typeNode, "java", "lang", "Class");
 					
-					st = maker.Exec(maker.Apply(List.<JCExpression>of(paramType,ftype,classType,classType), 
+					if(fvarDecl.getType() instanceof ParameterizedTypeTree) {
+						ParameterizedTypeTree pjcType = (ParameterizedTypeTree)fvarDecl.getType();
+						psTypeExp = memberTypeExpression(typeNode, pjcType.getType().toString() + ".class");
+					}else if(fvarDecl.getType() instanceof JCArrayTypeTree) {
+						psTypeExp = maker.Literal(CTC_BOT, null);
+					}else {
+						 psTypeExp = memberTypeExpression(typeNode, fvarDecl.getType().toString() + ".class");
+					}
+					
+					JCExpression getInsExp = maker.Apply(List.<JCExpression>nil(), memberTypeExpression(typeNode, "cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns"), List.<JCExpression>nil());
+					JCExpression getCoderExp = maker.Apply(List.<JCExpression>nil(), maker.Select(getInsExp, typeNode.toName("getDefaultCoder")), List.<JCExpression>nil());
+					JCVariableDecl typeCoderVar = maker.VarDef(maker.Modifiers(0), typeNode.toName("__coder"), typeCoderType, getCoderExp);
+					elseStatements = elseStatements.append(typeCoderVar);
+					
+					//sts = sts.append(typeCoderVar);
+					//__coder == null时，取__coder
+					//sts = sts.append(maker.If(maker.Binary(CTC_EQUAL, maker.Ident(typeNode.toName("__coder")), gsTypeExp), typeCoderVar, null));
+					//JCExpressionStatement asExp = maker.Exec(maker.Assign(maker.Ident(typeNode.toName("__coder")), getCoderExp));
+					//sts = sts.append(maker.If(maker.Binary(CTC_EQUAL, maker.Ident(typeNode.toName("__coder")), gsTypeExp),asExp , null));
+					
+					JCMethodInvocation deExp = maker.Apply(List.<JCExpression>nil(/*paramType,ftype,classType,classType*/), 
 						maker.Select(maker.Ident(typeNode.toName("__coder")), decodeName),
-						List.<JCExpression>of(bufIntent, val, psTypeExp, gsTypeExp)));
+						List.<JCExpression>of(bufIntent, psTypeExp, gsTypeExp));
 					
+					st = maker.Exec(maker.Assign(val, maker.TypeCast(jcftype,deExp)));
 					elseStatements = elseStatements.append(st);
 				}
 				
@@ -335,7 +360,7 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 		
 		JCMethodDecl decl = JavacHandlerUtil.recursiveSetGeneratedBy(methodDef, source);
 		
-		System.out.println(decl.toString());
+		//System.out.println(decl.toString());
 		
 		JCClassDecl type = (JCClassDecl) typeNode.get();
 		type.defs = type.defs.append(decl);
@@ -365,11 +390,14 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 		// "java.io.DataOutput");
 		JCExpression paramType = chainDots(typeNode, "java", "io", "DataOutput");
 		JCExpression bufferType = memberTypeExpression(typeNode, "cn.jmicro.api.codec.JDataOutput");
-		JCExpression typeCoderType = memberTypeExpression(typeNode, "cn.jmicro.api.codec.typecoder.TypeCoder");
+		JCExpression typeCoderType = memberTypeExpression(typeNode, "cn.jmicro.api.codec.typecoder.ITypeCoder");
 		JCExpression serializeObjectType = memberTypeExpression(typeNode, "cn.jmicro.api.codec.ISerializeObject");
 		
 		// cn.jmicro.api.codec.JDataInput in =
-		// (cn.jmicro.api.codec.JDataInput)buf;\n
+		// (cn.jmicro.api.codec.JDataInput)buf;
+		//JCVariableDecl typeCoderVar = maker.VarDef(maker.Modifiers(0), typeNode.toName("__coder"), typeCoderType, null);
+		//sts = sts.append(typeCoderVar);
+		
 		Name bufName = typeNode.toName("buf");
 		JCIdent bufIntent = maker.Ident(bufName);
 		
@@ -389,20 +417,14 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 		JCVariableDecl outVar = maker.VarDef(maker.Modifiers(0), typeNode.toName("out"), bufferType, jdEXp);
 		sts = sts.append(outVar);
 		
-		// cn.jmicro.api.codec.typecoder.TypeCoder __coder =
-		// cn.jmicro.api.codec.TypeCoderFactory.getIns().getDefaultCoder();\n
-		JCExpression getInsExp = maker.Apply(List.<JCExpression>nil(), memberTypeExpression(typeNode, "cn.jmicro.api.codec.TypeCoderFactory.getIns"), List.<JCExpression>nil());
-		
-		JCExpression getCoderExp = maker.Apply(List.<JCExpression>nil(), maker.Select(getInsExp, typeNode.toName("getDefaultCoder")), List.<JCExpression>nil());
-		
-		JCVariableDecl typeCoderVar = maker.VarDef(maker.Modifiers(0), typeNode.toName("__coder"), typeCoderType, getCoderExp);
-		sts = sts.append(typeCoderVar);
-		
-		if (!isDirectDescendantOfObject(typeNode)) {
+		// cn.jmicro.api.codec.typecoder.ITypeCoder __coder =
+		// cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns().getDefaultCoder();\n
+		if(!isDirectDescendantOfObject(typeNode)) {
 			// super.decode(buf);
 			JCTree extending = Javac.getExtendsClause((JCClassDecl) typeNode.get());
-			if (extending != null) {
-				JCStatement callToSuper = maker.Exec(maker.Apply(List.<JCExpression>of(paramType), 
+			if (extending instanceof JCIdent && 
+				((JCIdent)extending).sym.getAnnotation(Serial.class) != null) {
+				JCStatement callToSuper = maker.Exec(maker.Apply(List.<JCExpression>nil(), 
 					maker.Select(maker.Ident(typeNode.toName("super")), typeNode.toName(methodName)),
 					List.<JCExpression>of(bufIntent)));
 				sts = sts.append(callToSuper);
@@ -414,7 +436,6 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 			// sb.append(" ").append(fd.getName()).append(" __val"+i).append("=
 			// __obj.").append(f.getSimpleName()).append(";\n");
 			JCVariableDecl fvarDecl = (JCVariableDecl) f.get();
-			JCExpression ftype = (JCExpression) (fvarDecl.getType());
 			JCExpression val = maker.Select(maker.Ident(typeNode.toName("this")), typeNode.toName(f.getName()));
 			
 			JCExpression isNullExp = maker.Binary(CTC_EQUAL, val, maker.Literal(CTC_BOT, null));
@@ -423,7 +444,7 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 			String writeMethodName = null;
 			
 			int i = 0;
-			String tname = ftype.type.toString();
+			String tname = fvarDecl.getType().type.toString();
 			
 			if (f.isPrimitive()) {
 				switch (((JCPrimitiveTypeTree) fvarDecl.getType()).getPrimitiveTypeKind()) {
@@ -543,7 +564,9 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 				
 				encodeObjectSts = encodeObjectSts.append(elsepart);
 				
-				if (f.hasAnnotation(Serial.class)) {
+				JCExpression jcType = (JCExpression)fvarDecl.getType();
+				if (jcType instanceof JCIdent && 
+					((JCIdent)jcType).sym.getAnnotation(Serial.class) != null/*f.hasAnnotation(Serial.class)*/) {
 					
 					// sb.append("
 					// ((cn.jmicro.api.codec.ISerializeObject)__o"+i+").encode(buf);\n
@@ -557,7 +580,7 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 					encodeObjectSts = encodeObjectSts.append(objVar);
 					
 					// ((cn.jmicro.api.codec.ISerializeObject)__o"+i+")
-					JCTypeCast tc = maker.TypeCast(maker.Ident(typeNode.toName(loName)), serializeObjectType);
+					JCTypeCast tc = maker.TypeCast(serializeObjectType,maker.Ident(typeNode.toName(loName)));
 					
 					// .encode(buf);\n
 					st = maker.Exec(maker.Apply(List.<JCExpression>nil(), maker.Select(tc, encodeName), List.<JCExpression>of(bufIntent)));
@@ -569,11 +592,29 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 					
 					// JCExpression classType =
 					// genJavaLangTypeRef(typeNode,"Class");
-					JCExpression classType = chainDots(typeNode, "java", "lang", "Class");
-					JCExpression psTypeExp = memberTypeExpression(typeNode, fvarDecl.getType().toString() + ".class");
+					//JCExpression classType = chainDots(typeNode, "java", "lang", "Class");
+					JCExpression psTypeExp = null;
 					JCExpression gsTypeExp = maker.Literal(CTC_BOT, null);
 					
-					st = maker.Exec(maker.Apply(List.<JCExpression>of(paramType,ftype,classType,classType),
+					if(jcType instanceof ParameterizedTypeTree) {
+						ParameterizedTypeTree pjcType = (ParameterizedTypeTree)jcType;
+						psTypeExp = memberTypeExpression(typeNode, pjcType.getType().toString() + ".class");
+					}else if(jcType instanceof JCArrayTypeTree) {
+						psTypeExp = maker.Literal(CTC_BOT, null);
+					}else {
+						 psTypeExp = memberTypeExpression(typeNode, fvarDecl.getType().toString() + ".class");
+					}
+					
+					JCExpression getInsExp = maker.Apply(List.<JCExpression>nil(), memberTypeExpression(typeNode, "cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns"), List.<JCExpression>nil());
+					JCExpression getCoderExp = maker.Apply(List.<JCExpression>nil(), maker.Select(getInsExp, typeNode.toName("getDefaultCoder")), List.<JCExpression>nil());
+					JCVariableDecl typeCoderVar = maker.VarDef(maker.Modifiers(0), typeNode.toName("__coder"), typeCoderType, getCoderExp);
+					encodeObjectSts = encodeObjectSts.append(typeCoderVar);
+					
+					//JCExpressionStatement asExp = maker.Exec(maker.Assign(maker.Ident(typeNode.toName("__coder")), getCoderExp));
+					//__coder == null 取__coder
+					//sts = sts.append(maker.If(maker.Binary(CTC_EQUAL, maker.Ident(typeNode.toName("__coder")), gsTypeExp),asExp , null));
+					
+					st = maker.Exec(maker.Apply(List.<JCExpression>nil(/*paramType,ftype,classType,classType*/),
 						maker.Select(maker.Ident(typeNode.toName("__coder")), encodeName), 
 						List.<JCExpression>of(bufIntent, val, psTypeExp, gsTypeExp)));
 					encodeObjectSts = encodeObjectSts.append(st);
@@ -607,7 +648,7 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 		
 		JCMethodDecl decl = JavacHandlerUtil.recursiveSetGeneratedBy(methodDef, source);
 		
-		System.out.println(decl.toString());
+		//System.out.println(decl.toString());
 		
 		JCClassDecl type = (JCClassDecl) typeNode.get();
 		type.defs = type.defs.append(decl);

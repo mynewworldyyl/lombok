@@ -220,7 +220,7 @@ public class RunTestsViaEcj extends AbstractRunTests {
 		return true;
 	}
 	
-	private static final String bootRuntimePath = System.getProperty("delombok.bootclasspath");
+	private static final String bootRuntimePath ="D:\\opensource\\github\\lombok\\lib\\openjdk8_rt.jar";// System.getProperty("delombok.bootclasspath");
 	
 	private static class EclipseDomConversion {
 		static CompilationUnit toDomAst(CompilationUnitDeclaration cud, final char[] source) {
