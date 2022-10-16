@@ -59,7 +59,7 @@ public class HandleValue extends EclipseAnnotationHandler<Value> {
 		Value ann = annotation.getInstance();
 		EclipseNode typeNode = annotationNode.up();
 		
-		if (!isClass(typeNode)) {
+		if(!isClass(typeNode)) {
 			annotationNode.addError("@Value is only supported on a class.");
 			return;
 		}

@@ -75,7 +75,7 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 		JavacNode classNode = annotationNode.up();
 		java.util.List<JavacNode> members = new ArrayList<JavacNode>();
 		
-		for (JavacNode child : classNode.down()) {
+		for(JavacNode child : classNode.down()) {
 			if (child.getKind() == Kind.FIELD && !child.isStatic() && !child.isTransient()) {
 				members.add(child);
 			}

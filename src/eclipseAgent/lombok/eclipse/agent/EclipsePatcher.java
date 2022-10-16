@@ -74,7 +74,7 @@ public class EclipsePatcher implements AgentLauncher.AgentLaunchable {
 		sm.setTransplantMapper(new TransplantMapper() {
 			public String mapResourceName(int classFileFormatVersion, String resourceName) {
 				if (classFileFormatVersion < 50 || forceBaseResourceNames) return resourceName;
-				return /*"Class50/" + */resourceName;
+				return "Class50/" + resourceName;
 			}
 		});
 		

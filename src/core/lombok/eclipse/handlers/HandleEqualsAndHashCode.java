@@ -719,6 +719,7 @@ public class HandleEqualsAndHashCode extends EclipseAnnotationHandler<EqualsAndH
 		
 		/* if (!other.canEqual((java.lang.Object) this)) return false; */ {
 			if (needsCanEqual) {
+				//other.canEqual((java.lang.Object) this)
 				MessageSend otherCanEqual = new MessageSend();
 				otherCanEqual.sourceStart = pS; otherCanEqual.sourceEnd = pE;
 				setGeneratedBy(otherCanEqual, source);
@@ -726,6 +727,7 @@ public class HandleEqualsAndHashCode extends EclipseAnnotationHandler<EqualsAndH
 				setGeneratedBy(otherCanEqual.receiver, source);
 				otherCanEqual.selector = "canEqual".toCharArray();
 				
+				//(java.lang.Object) this)
 				ThisReference thisReference = new ThisReference(pS, pE);
 				setGeneratedBy(thisReference, source);
 				CastExpression castThisRef = makeCastExpression(thisReference, generateQualifiedTypeRef(source, TypeConstants.JAVA_LANG_OBJECT), source);

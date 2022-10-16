@@ -57,6 +57,7 @@ public class EclipseNode extends lombok.core.LombokNode<EclipseAST, EclipseNode,
 	public EclipseAST getAst() {
 		return ast;
 	}
+	
 	/**
 	 * Visits this node and all child nodes depth-first, calling the provided visitor's visit methods.
 	 */

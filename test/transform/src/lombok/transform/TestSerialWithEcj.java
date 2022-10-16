@@ -51,7 +51,7 @@ public class TestSerialWithEcj extends DirectoryRunner.TestParams {
 	
 	@Override
 	public File getAfterDirectory() {
-		return new File("test/transform/resource/after-ecj");
+		return new File("test/transform/resource/serial-after");
 	}
 	
 	@Override
