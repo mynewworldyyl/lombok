@@ -326,7 +326,7 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 					
 					JCMethodInvocation deExp = maker.Apply(List.<JCExpression>nil(/*paramType,ftype,classType,classType*/), 
 						maker.Select(maker.Ident(typeNode.toName("__coder")), decodeName),
-						List.<JCExpression>of(bufIntent, psTypeExp, gsTypeExp));
+						List.<JCExpression>of(bufIntent,  maker.Literal(CTC_BOT, null),maker.Literal(CTC_BOT, null)/*psTypeExp, gsTypeExp*/));
 					
 					st = maker.Exec(maker.Assign(val, maker.TypeCast(jcftype,deExp)));
 					elseStatements = elseStatements.append(st);
@@ -586,6 +586,10 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 					st = maker.Exec(maker.Apply(List.<JCExpression>nil(), maker.Select(tc, encodeName), List.<JCExpression>of(bufIntent)));
 					encodeObjectSts = encodeObjectSts.append(st);
 				} else {
+					
+					/*JCStatement writeprefix = maker.Exec(maker.Apply(List.<JCExpression>nil(), maker.Select(maker.Ident(typeNode.toName("out")), typeNode.toName("write")), List.<JCExpression>of(nullPrefix)));
+					encodeObjectSts = encodeObjectSts.append(writeprefix);*/
+					
 					// sb.append("
 					// __coder.encode(buf,__val").append(i).append(",").append(fd.getName()).append(".class,").append("
 					// null ); \n }");
@@ -616,7 +620,7 @@ public class HandleSerial extends JavacAnnotationHandler<Serial> {
 					
 					st = maker.Exec(maker.Apply(List.<JCExpression>nil(/*paramType,ftype,classType,classType*/),
 						maker.Select(maker.Ident(typeNode.toName("__coder")), encodeName), 
-						List.<JCExpression>of(bufIntent, val, psTypeExp, gsTypeExp)));
+						List.<JCExpression>of(bufIntent, val, maker.Literal(CTC_BOT, null),maker.Literal(CTC_BOT, null) /*psTypeExp, gsTypeExp*/)));
 					encodeObjectSts = encodeObjectSts.append(st);
 				}
 				

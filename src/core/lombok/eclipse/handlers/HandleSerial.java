@@ -47,7 +47,6 @@ import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.FieldReference;
 import org.eclipse.jdt.internal.compiler.ast.FloatLiteral;
 import org.eclipse.jdt.internal.compiler.ast.IfStatement;
-import org.eclipse.jdt.internal.compiler.ast.InstanceOfExpression;
 import org.eclipse.jdt.internal.compiler.ast.IntLiteral;
 import org.eclipse.jdt.internal.compiler.ast.Literal;
 import org.eclipse.jdt.internal.compiler.ast.LocalDeclaration;
@@ -398,96 +397,136 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 						setGeneratedBy(thenSetNullSt, source);
 						setGeneratedBy(thenSetNullSt.expression, source);
 						
-						//else写值
-						
-						//cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns().getDefaultCoder().decode(buf, this.tags, Set.class, null);
-						char[][] TypeCoderFactoryUtils = {{'c','n'}, "jmicro".toCharArray(),"api".toCharArray(),"codec".toCharArray(),"TypeCoderFactoryUtils".toCharArray()};
-						MessageSend getIns = new MessageSend();
-						getIns.sourceStart = pS; 
-						getIns.sourceEnd = pE;
-						setGeneratedBy(getIns, source);
-						getIns.receiver = generateQualifiedNameRef(source, TypeCoderFactoryUtils);
-						setGeneratedBy(getIns.receiver, source);
-						getIns.selector = "getIns".toCharArray();
-						getIns.arguments = null;
-						
-						MessageSend getDefaultCoder = new MessageSend();
-						getDefaultCoder.sourceStart = pS;
-						getDefaultCoder.sourceEnd = pE;
-						setGeneratedBy(getDefaultCoder, source);
-						getDefaultCoder.receiver = getIns;
-						setGeneratedBy(getDefaultCoder.receiver, source);
-						getDefaultCoder.selector = "getDefaultCoder".toCharArray();
-						getDefaultCoder.arguments = null;
-						
-						MessageSend decodeVal = new MessageSend();
-						decodeVal.sourceStart = pS;
-						decodeVal.sourceEnd = pE;
-						setGeneratedBy(decodeVal, source);
-						decodeVal.receiver = getDefaultCoder;
-						setGeneratedBy(decodeVal.receiver, source);
-						decodeVal.selector = "decode".toCharArray();
-						decodeVal.arguments = new Expression[3];
-						decodeVal.arguments[0] = new SingleNameReference(new char[] {'b','u','f'},p);
-						setGeneratedBy(decodeVal.arguments[0], source);
-						
-						/*char[][] clazzCharArray = {fType.toString().toCharArray(),"class".toCharArray()};
-						decodeVal.arguments[1] = generateQualifiedNameRef(source,clazzCharArray);*/
-						decodeVal.arguments[1] = new NullLiteral(pS,pE) ;
-						
-						decodeVal.arguments[2] = new NullLiteral(pS,pE) ;
-						setGeneratedBy(decodeVal.arguments[2], source);
-						
-						CastExpression rval = makeCastExpression(decodeVal, EclipseHandlerUtil.copyType(fType,source), source);
-						setGeneratedBy(rval, source);
-						
-						Assignment setReadVal = new Assignment(fieldInThis, rval, pE);
-						setGeneratedBy(thenSetNullSt, source);
-						setGeneratedBy(thenSetNullSt.expression, source);
-						//cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns().getDefaultCoder().decode(buf, this.tags, Set.class, null); end
-						
-						
-						String cn0 = "cn.jmicro.api.codec.ISerializeObject";
-						TypeReference serialTypreRef = EclipseHandlerUtil.createTypeReference(cn0, source);
-						setGeneratedBy(serialTypreRef, source);
-						
-						// ((ISerializeObject)this.fieldName).decode(buff);
-						Block decodeDefBlock = new Block(0);
-						setGeneratedBy(decodeDefBlock, source);
-						decodeDefBlock.statements = new Statement[2];
-						
-						String bn = "b"+i++;
-						
-						LocalDeclaration other = new LocalDeclaration(bn.toCharArray(), pS, pE);
-						other.modifiers |= ClassFileConstants.AccFinal;
-						setGeneratedBy(other, source);
-						other.type = serialTypreRef;
-						other.initialization = makeCastExpression(fieldInThis, serialTypreRef, source);
-						decodeDefBlock.statements[0] = other;
-						
-						NameReference oRef = new SingleNameReference(bn.toCharArray(), p);
-						setGeneratedBy(oRef, source);
-						
-						MessageSend serialEncodeObjCall = new MessageSend();
-						serialEncodeObjCall.sourceStart = pS; serialEncodeObjCall.sourceEnd = pE;
-						setGeneratedBy(serialEncodeObjCall, source);
-						serialEncodeObjCall.receiver = oRef;
-						serialEncodeObjCall.selector = "decode".toCharArray();
-						SingleNameReference buff = new SingleNameReference(bufCharArr, p);
-						setGeneratedBy(buff, source);
-						serialEncodeObjCall.arguments = new Expression[] {buff};
-						
-						decodeDefBlock.statements[1] = serialEncodeObjCall;
-						// ((ISerializeObject)this.fieldName).encode(buff); end
-						
 						//if(this.fileName instanceof ISerializeObject)
-						InstanceOfExpression insOf = new InstanceOfExpression(fieldInThis,serialTypreRef);
-						
+						/*InstanceOfExpression insOf = new InstanceOfExpression(fieldInThis,serialTypreRef);
 						IfStatement instanceofStatement = new IfStatement(insOf, decodeDefBlock, setReadVal, pS, pE);
-						setGeneratedBy(instanceofStatement, source);
+						setGeneratedBy(instanceofStatement, source);*/
 						
+						//else写值
+						IfStatement ifOtherEqualsThis = null;
+						if(fType.toString().endsWith("JRso")) {
+							String cn0 = "cn.jmicro.api.codec.ISerializeObject";
+							TypeReference serialTypreRef = EclipseHandlerUtil.createTypeReference(cn0, source);
+							setGeneratedBy(serialTypreRef, source);
+							
+							//((ISerializeObject)this.fieldName).decode(buff);
+							Block decodeDefBlock = new Block(0);
+							setGeneratedBy(decodeDefBlock, source);
+							decodeDefBlock.statements = new Statement[3];
+							
+							//if(this.fileName == null) this.filedName = new FieldType()
+							FieldReference fnvExp = new FieldReference(f.getName().toCharArray(), p);
+							setGeneratedBy(fnvExp, source);
+							fnvExp.receiver = new ThisReference(pS, pE);
+							setGeneratedBy(fnvExp.receiver, source);
+							
+							EqualExpression fieldValIsNull = new EqualExpression(fnvExp, new NullLiteral(pS, pE), OperatorIds.EQUAL_EQUAL);
+							setGeneratedBy(fieldValIsNull, source);
+							setGeneratedBy(fieldValIsNull.right, source);
+							
+							//final long[] NULL_POSS = {0L};
+							TypeReference v1Type = EclipseHandlerUtil.copyType(fType, source);
+							setGeneratedBy(v1Type, source);
+							//v1Type = addTypeArgs(1, false, builderType, v1Type, data.getTypeArgs());
+							AllocationExpression newField = new AllocationExpression();
+							newField.type = v1Type;
+							setGeneratedBy(newField, source);
+							
+							FieldReference fieldInThis0 = new FieldReference(f.getName().toCharArray(), p);
+							setGeneratedBy(fieldInThis0, source);
+							fieldInThis0.receiver = new ThisReference(pS, pE);
+							setGeneratedBy(fieldInThis0.receiver, source);
+							
+							Assignment ass = new Assignment(fieldInThis0, newField, pE);
+							setGeneratedBy(ass, source);
+							
+							IfStatement fieldIsNullStatement = new IfStatement(fieldValIsNull, ass, null, pS, pE);
+							setGeneratedBy(fieldIsNullStatement, source);
+							decodeDefBlock.statements[0] = fieldIsNullStatement;
+							//if(this.fileName == null) this.filedName = new FieldType() end
+							
+							String bn = "b"+i++;
+							
+							LocalDeclaration other = new LocalDeclaration(bn.toCharArray(), pS, pE);
+							other.modifiers |= ClassFileConstants.AccFinal;
+							setGeneratedBy(other, source);
+							other.type = serialTypreRef;
+							other.initialization = makeCastExpression(fieldInThis, serialTypreRef, source);
+							decodeDefBlock.statements[1] = other;
+							
+							NameReference oRef = new SingleNameReference(bn.toCharArray(), p);
+							setGeneratedBy(oRef, source);
+							
+							MessageSend serialEncodeObjCall = new MessageSend();
+							serialEncodeObjCall.sourceStart = pS; serialEncodeObjCall.sourceEnd = pE;
+							setGeneratedBy(serialEncodeObjCall, source);
+							serialEncodeObjCall.receiver = oRef;
+							serialEncodeObjCall.selector = "decode".toCharArray();
+							SingleNameReference buff = new SingleNameReference(bufCharArr, p);
+							setGeneratedBy(buff, source);
+							serialEncodeObjCall.arguments = new Expression[] {buff};
+							
+							decodeDefBlock.statements[2] = serialEncodeObjCall;
+							// ((ISerializeObject)this.fieldName).encode(buff); end
+							ifOtherEqualsThis = new IfStatement(isNullPrefixCodeVal, thenSetNullSt, decodeDefBlock, pS, pE);
+						} else {
+							//cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns().getDefaultCoder().decode(buf, this.tags, Set.class, null);
+							char[][] TypeCoderFactoryUtils = {{'c','n'}, "jmicro".toCharArray(),"api".toCharArray(),"codec".toCharArray(),"TypeCoderFactoryUtils".toCharArray()};
+							MessageSend getIns = new MessageSend();
+							getIns.sourceStart = pS; 
+							getIns.sourceEnd = pE;
+							setGeneratedBy(getIns, source);
+							getIns.receiver = generateQualifiedNameRef(source, TypeCoderFactoryUtils);
+							setGeneratedBy(getIns.receiver, source);
+							getIns.selector = "getIns".toCharArray();
+							getIns.arguments = null;
+							
+							MessageSend getDefaultCoder = new MessageSend();
+							getDefaultCoder.sourceStart = pS;
+							getDefaultCoder.sourceEnd = pE;
+							setGeneratedBy(getDefaultCoder, source);
+							getDefaultCoder.receiver = getIns;
+							setGeneratedBy(getDefaultCoder.receiver, source);
+							getDefaultCoder.selector = "getDefaultCoder".toCharArray();
+							getDefaultCoder.arguments = null;
+							
+							MessageSend decodeVal = new MessageSend();
+							decodeVal.sourceStart = pS;
+							decodeVal.sourceEnd = pE;
+							setGeneratedBy(decodeVal, source);
+							decodeVal.receiver = getDefaultCoder;
+							setGeneratedBy(decodeVal.receiver, source);
+							decodeVal.selector = "decode".toCharArray();
+							decodeVal.arguments = new Expression[3];
+							decodeVal.arguments[0] = new SingleNameReference(new char[] {'b','u','f'},p);
+							setGeneratedBy(decodeVal.arguments[0], source);
+							
+							/*char[][] clazzCharArray = {fType.toString().toCharArray(),"class".toCharArray()};
+							decodeVal.arguments[1] = generateQualifiedNameRef(source,clazzCharArray);
+							setGeneratedBy(decodeVal.arguments[1], source);*/
+							decodeVal.arguments[1] = new NullLiteral(pS,pE) ;
+							
+							/*FieldReference classRef = new FieldReference("class".toCharArray(), p);
+							setGeneratedBy(classRef, source);
+							classRef.receiver = EclipseHandlerUtil.copyType(fType, source);
+							setGeneratedBy(classRef.receiver, source);
+							decodeVal.arguments[1]= classRef;*/
+							
+							decodeVal.arguments[2] = new NullLiteral(pS,pE) ;
+							setGeneratedBy(decodeVal.arguments[2], source);
+							
+							CastExpression rval = makeCastExpression(decodeVal, EclipseHandlerUtil.copyType(fType,source), source);
+							setGeneratedBy(rval, source);
+							
+							Assignment setReadVal = new Assignment(fieldInThis, rval, pE);
+							setGeneratedBy(thenSetNullSt, source);
+							setGeneratedBy(thenSetNullSt.expression, source);
+							//cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns().getDefaultCoder().decode(buf, this.tags, Set.class, null); end
 						
-						IfStatement ifOtherEqualsThis = new IfStatement(isNullPrefixCodeVal, thenSetNullSt, instanceofStatement, pS, pE);
+							ifOtherEqualsThis = new IfStatement(isNullPrefixCodeVal, thenSetNullSt, setReadVal, pS, pE);
+						}
+						
+						//IfStatement ifOtherEqualsThis = new IfStatement(isNullPrefixCodeVal, thenSetNullSt, inner, pS, pE);
 						setGeneratedBy(ifOtherEqualsThis, source);
 						
 						statements.add(ifOtherEqualsThis);
@@ -552,7 +591,8 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 						setGeneratedBy(decodeVal.arguments[0], source);
 						
 						/*char[][] clazzCharArray = {fType.toString().toCharArray(),"class".toCharArray()};
-						decodeVal.arguments[1] = generateQualifiedNameRef(source,clazzCharArray);*/
+						decodeVal.arguments[1] = generateQualifiedNameRef(source,clazzCharArray);
+						setGeneratedBy(decodeVal.arguments[1], source);*/
 						decodeVal.arguments[1] = new NullLiteral(pS,pE) ;
 						
 						decodeVal.arguments[2] = new NullLiteral(pS,pE) ;
@@ -565,7 +605,6 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 						setGeneratedBy(thenSetNullSt, source);
 						setGeneratedBy(thenSetNullSt.expression, source);
 						//cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns().getDefaultCoder().decode(buf, this.tags, Set.class, null); end
-						
 						
 						String cn0 = "cn.jmicro.api.codec.ISerializeObject";
 						TypeReference serialTypreRef = EclipseHandlerUtil.createTypeReference(cn0, source);
@@ -613,7 +652,7 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 
 	private void createEncodeMethod(EclipseNode typeNode, EclipseNode errorNode, ASTNode source) {
 		int pS = source.sourceStart;
-		int pE = source.sourceEnd;
+		int pE = source.sourceEnd; 
 		long p = (long) pS << 32 | pE;
 		
 		List<NullAnnotationLibrary> applied = new ArrayList<NullAnnotationLibrary>();
@@ -783,6 +822,7 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 				setGeneratedBy(fieldInThis, source);
 				fieldInThis.receiver = new ThisReference(pS, pE);
 				setGeneratedBy(fieldInThis.receiver, source);
+				
 				if (!isArray && EclipseHandlerUtil.typeMatches(Integer.class, f, fType)) {
 					writeVal("writeInt",isNullVal, fieldInThis, IntLiteral.buildIntLiteral(new char[] {'0'}, pS, pE), source,statements);
 				} else if (!isArray && EclipseHandlerUtil.typeMatches(String.class, f, fType)) {
@@ -837,7 +877,6 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 					thenWriteVal.selector = "write".toCharArray();
 					thenWriteVal.arguments = new Expression[] {nullTypePrefix};
 					//cn.jmicro.api.codec.DecoderConstant.PREFIX_TYPE_NULL end
-					
 					
 					//else写值
 					if(!isArray) {
@@ -898,10 +937,23 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 						setGeneratedBy(fieldInThis3.receiver, source);
 						encode.arguments[1] = fieldInThis3;
 						
-						
 						/*char[][] clazzCharArray = {fType.toString().toCharArray(), "class".toCharArray()};
 						encode.arguments[2] = generateQualifiedNameRef(source, clazzCharArray);
 						setGeneratedBy(encode.arguments[2], source);*/
+						
+						
+						/*FieldReference classRef = new FieldReference("class".toCharArray(), p);
+						setGeneratedBy(classRef, source);
+						classRef.receiver = EclipseHandlerUtil.copyType(fType, source);
+						setGeneratedBy(classRef.receiver, source);
+						encode.arguments[2] = classRef;*/
+						
+						
+						/*
+						TypeLibrary tl = TypeLibrary.createLibraryForSingleType(fType.toString());
+						String fqn = typeNode.getAst().getImportListAsTypeResolver()
+						.typeRefToFullyQualifiedName(typeNode, tl, toQualifiedName(fType.getTypeName()));
+						*/
 						
 						encode.arguments[2] = new NullLiteral(fieldInThis.sourceStart, fieldInThis.sourceEnd);
 						setGeneratedBy(encode.arguments[2], source);
@@ -931,7 +983,8 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 						setGeneratedBy(oRef, source);
 						
 						MessageSend serialEncodeObjCall = new MessageSend();
-						serialEncodeObjCall.sourceStart = pS; serialEncodeObjCall.sourceEnd = pE;
+						serialEncodeObjCall.sourceStart = pS;
+						serialEncodeObjCall.sourceEnd = pE;
 						setGeneratedBy(serialEncodeObjCall, source);
 						serialEncodeObjCall.receiver = oRef;
 						serialEncodeObjCall.selector = "encode".toCharArray();
@@ -943,20 +996,23 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 						// ((ISerializeObject)this.fieldName).encode(buff); end
 						
 						//if(this.fileName instanceof ISerializeObject)
-						Expression insOf = new InstanceOfExpression(fieldInThis, EclipseHandlerUtil.copyType(serialTypreRef,source));
+						/*Expression insOf = new InstanceOfExpression(fieldInThis, EclipseHandlerUtil.copyType(serialTypreRef,source));
 						
 						IfStatement instanceofStatement = new IfStatement(insOf, encodeDefBlock, encode, pS, pE);
-						setGeneratedBy(instanceofStatement, source);
-						
-						inner.statements[1] = instanceofStatement;
+						setGeneratedBy(instanceofStatement, source);*/
+						if(fType.toString().endsWith("JRso")) {
+							inner.statements[1] = encodeDefBlock;
+						}else {
+							inner.statements[1] = encode;
+						}
 						
 						IfStatement ifOtherEqualsThis = new IfStatement(isNullVal, thenWriteVal, inner, pS, pE);
 						setGeneratedBy(ifOtherEqualsThis, source);
 						statements.add(ifOtherEqualsThis);
 					} else {
 
-						Block inner = new Block(0);
-						inner.statements = new Statement[2];
+						Block elseBlock = new Block(0);
+						elseBlock.statements = new Statement[2];
 						
 						//out.write(cn.jmicro.api.codec.DecoderConstant.PREFIX_TYPE_PROXY);
 						FieldReference proxyTypePrefix = new FieldReference("PREFIX_TYPE_PROXY".toCharArray(), p);
@@ -970,7 +1026,7 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 						setGeneratedBy(thenWriteVal.receiver, source);
 						writeProxyValSt.selector = "write".toCharArray();
 						writeProxyValSt.arguments = new Expression[] {proxyTypePrefix};
-						inner.statements[0] = writeProxyValSt;
+						elseBlock.statements[0] = writeProxyValSt;
 						//out.write(cn.jmicro.api.codec.DecoderConstant.PREFIX_TYPE_PROXY); end
 						
 						//cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns().getDefaultCoder();
@@ -1010,13 +1066,27 @@ public class HandleSerial extends EclipseAnnotationHandler<Serial> {
 						fieldInThis2.receiver = new ThisReference(pS, pE);
 						setGeneratedBy(fieldInThis2.receiver, source);
 						encode.arguments[1] = fieldInThis2;
+
+						/*
+						char[][] clazzCharArray = {fType.toString().toCharArray(), "class".toCharArray()};
+						encode.arguments[2] = generateQualifiedNameRef(source, clazzCharArray);
+						setGeneratedBy(encode.arguments[2], source);
+						*/
+						
+					/*	FieldReference classRef = new FieldReference("class".toCharArray(), p);
+						setGeneratedBy(classRef, source);
+						classRef.receiver = EclipseHandlerUtil.copyType(fType, source);
+						setGeneratedBy(classRef.receiver, source);
+						encode.arguments[2] = classRef;*/
 						
 						encode.arguments[2] = new NullLiteral(pS, pE) ;
 						encode.arguments[3] = new NullLiteral(pS, pE) ;
 						setGeneratedBy(encode.arguments[3], source);
 						//cn.jmicro.api.codec.TypeCoderFactoryUtils.getIns().getDefaultCoder(); end
 						
-						IfStatement ifOtherEqualsThis = new IfStatement(isNullVal, thenWriteVal, encode, pS, pE);
+						elseBlock.statements[1] = encode;
+						
+						IfStatement ifOtherEqualsThis = new IfStatement(isNullVal, thenWriteVal, elseBlock, pS, pE);
 						setGeneratedBy(ifOtherEqualsThis, source);
 						statements.add(ifOtherEqualsThis);
 						

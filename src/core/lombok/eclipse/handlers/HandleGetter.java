@@ -357,7 +357,8 @@ public class HandleGetter extends EclipseAnnotationHandler<Getter> {
 		long p = (long)pS << 32 | pE;
 		
 		TypeReference rawComponentType = copyType(field.type, source);
-		TypeReference boxedComponentType = null;
+		TypeReference boxedComponentType = null;//8种基本类型的封装类型
+		
 		boolean isPrimitive = false;
 		if (field.type instanceof SingleTypeReference && !(field.type instanceof ArrayTypeReference)) {
 			char[][] newType = TYPE_MAP.get(new String(((SingleTypeReference)field.type).token));
